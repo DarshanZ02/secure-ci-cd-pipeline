@@ -40,7 +40,7 @@ jobs:
       - name: Run Dependency Security Scan (Snyk)
         run: |
           curl -sSL https://get.snyk.io | bash
-          snyk auth $SNYK_TOKEN
+          snyk auth ${{ secrets.SNYK_TOKEN }}
           snyk test --all-projects
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -58,4 +58,6 @@ jobs:
       - name: Run OWASP ZAP Security Scan
         run: |
           docker pull owasp/zap2docker-stable
-          docker run -t owasp/zap2docker-stable zap-baseline.py -t http://your-web-app-url
+          docker run -t owasp/zap2docker-stable zap-baseline.py -t https://example.com -z "-config api.key=${{ secrets.OWASP_ZAP_API_KEY }}"
+        env:
+          OWASP_ZAP_API_KEY: ${{ secrets.OWASP_ZAP_API_KEY }}
