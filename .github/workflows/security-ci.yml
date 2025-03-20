@@ -1,0 +1,61 @@
+name: CI/CD Security Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  security_checks:
+    name: Run Security Scans
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set Up Node.js (if using Node)
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Set Up Python (for TruffleHog, Checkov)
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Run Static Code Analysis (SonarQube)
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=my-secure-project
+            -Dsonar.organization=my-org
+            -Dsonar.host.url=https://sonarcloud.io
+
+      - name: Run Dependency Security Scan (Snyk)
+        run: |
+          curl -sSL https://get.snyk.io | bash
+          snyk auth $SNYK_TOKEN
+          snyk test --all-projects
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run Secret Scanning (TruffleHog)
+        run: |
+          pip install trufflehog
+          trufflehog filesystem --path . --regex --entropy=True
+
+      - name: Run Infrastructure Security Scan (Checkov)
+        run: |
+          pip install checkov
+          checkov -d .
+
+      - name: Run OWASP ZAP Security Scan
+        run: |
+          docker pull owasp/zap2docker-stable
+          docker run -t owasp/zap2docker-stable zap-baseline.py -t http://your-web-app-url
